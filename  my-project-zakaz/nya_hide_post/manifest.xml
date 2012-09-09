@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE extension SYSTEM "ext-1.0.dtd">
+
+<!--
+/**
+ *
+ * @copyright Copyright (C) 2009 PunBB
+ * @license http://www.gnu.org/licenses/gpl.html GPL version 2 or higher
+ * @package nya_hide_post
+ */
+-->
+
+<extension engine="1.0">
+	<id>nya_hide_post</id>
+	<title>Hide from Post</title>
+	<version>1.0.0</version>
+	<description>This extension hide posts from topic</description>
+	<author>KANekT</author>
+	<minversion>1.4</minversion>
+	<maxtestedon>1.4.2</maxtestedon>
+
+    <dependencies>
+        <dependency>developer_helper</dependency>
+    </dependencies>
+
+	<install>
+		forum_config_add("o_hide_post", "4");
+        if (!$forum_db->field_exists('posts', 'hidden'))
+    		$forum_db->add_field('posts', 'hidden', 'INT(10)', FALSE, 0);
+        if (!$forum_db->field_exists('posts', 'hidden_user'))
+            $forum_db->add_field('posts', 'hidden_user', 'varchar(200)', TRUE);
+	</install>
+
+	<uninstall>
+        $forum_db->drop_field('posts', 'hidden');
+        $forum_db->drop_field('posts', 'hidden_user');
+		forum_config_remove("o_hide_post");
+	</uninstall>
+
+	<hooks>
+        <hook id="vt_start,po_start"><![CDATA[
+    		App::$forum_loader->add_css($GLOBALS['ext_info']['url'].'/css/style.css', array('type' => 'url'));
+            App::load_language($ext_info['id']);
+        ]]></hook>
+
+        <hook id="vt_row_pre_post_actions_merge"><![CDATA[
+            $hide_post = intval($cur_post['hidden']);
+
+            if ($forum_page['is_admmod'] && $cur_topic['first_post_id'] != $cur_post['id'])
+            {
+                if ($cur_topic['closed'] == '0')
+                {
+                    if ($hide_post == 0)
+                    {
+                        $forum_page['post_actions']['hide'] = '<span class="hide-post'.(empty($forum_page['post_actions']) ? ' first-item' : '').'"><a href="'.forum_link($forum_url['nya_hide_post_offtopic'], array($cur_post['id'], $forum_user['username'], '1', generate_form_token('post_hide'.$cur_post['id'].'1'))).'">'.App::$lang['OffTopic Hide'].'<span> '.$lang_topic['Post'].' '.forum_number_format($forum_page['start_from'] + $forum_page['item_count']).'</span></a></span>
+                        <span class="hide-post'.(empty($forum_page['post_actions']) ? ' first-item' : '').'"><a href="'.forum_link($forum_url['nya_hide_post_offtopic'], array($cur_post['id'], $forum_user['username'], '2', generate_form_token('post_hide'.$cur_post['id'].'2'))).'">'.App::$lang['OffTopic Hide Forse'].'<span> '.$lang_topic['Post'].' '.forum_number_format($forum_page['start_from'] + $forum_page['item_count']).'</span></a></span>';
+                    }
+                    else
+                    {
+                        $forum_page['post_actions']['hide'] = '<span class="hide-post'.(empty($forum_page['post_actions']) ? ' first-item' : '').'"><a href="'.forum_link($forum_url['nya_hide_post_offtopic'], array($cur_post['id'], $forum_user['username'], '0', generate_form_token('post_hide'.$cur_post['id'].'0'))).'">'.App::$lang['OffTopic Show'].'<span> '.$lang_topic['Post'].' '.forum_number_format($forum_page['start_from'] + $forum_page['item_count']).'</span></a></span>';
+                    }
+                }
+            }
+            else if($hide_post <= time() && $cur_topic['first_post_id'] != $cur_post['id'] && $hide_post != 0 && !$forum_page['is_admmod'])
+            {
+                $cur_post['message'] = "";
+            }
+        ]]></hook>
+
+        <hook id="vt_row_pre_display"><![CDATA[
+            $now = time();
+            if($hide_post >= $now)
+            {
+                $forum_page['message']['message'] .= '<p class="post_offline">'.sprintf(App::$lang['Post Was hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+            }
+            else
+            {
+                if ($hide_post != 0)
+                {
+                    $forum_page['message']['signature'] = '';
+                    $forum_page['message']['message'] .= '<p class="post_offline">'.sprintf(App::$lang['Post Hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+                }
+            }
+        ]]></hook>
+
+        <hook id="po_topic_review_row_pre_display"><![CDATA[
+            $now = time();
+            $hide_post = intval($cur_post['hidden']);
+
+            if ($forum_page['is_admmod'])
+            {
+                if($hide_post >= $now)
+                {
+                    $forum_page['message'] .= '<p class="post_offline">'.sprintf(App::$lang['Post Was hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+                }
+                else if ($hide_post != 0)
+                {
+                    $forum_page['message'] .= '<p class="post_offline">'.sprintf(App::$lang['Post Hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+                }
+            }
+            else
+            {
+                if($hide_post >= $now)
+                {
+                    $forum_page['message'] .= '<p class="post_offline">'.sprintf(App::$lang['Post Was hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+                }
+                else if ($hide_post != 0)
+                {
+                    $forum_page['message'] = '<p class="post_offline">'.sprintf(App::$lang['Post Hidden'],$cur_post['hidden_user']).format_time($hide_post).'</p>';
+                }
+            }
+        ]]></hook>
+
+        <hook id="po_modify_quote_info"><![CDATA[
+            if ($quote_info['hidden'] != 0)
+                $quote_info['message'] = sprintf(App::$lang['Post Hidden'],$quote_info['hidden_user']).format_time($quote_info['hidden']);
+        ]]></hook>
+
+        <hook id="vt_qr_get_posts, ed_qr_get_post_info, po_qr_get_quote, po_topic_review_qr_get_topic_review_posts"><![CDATA[
+            $query['SELECT'] .= ", p.hidden, p.hidden_user";
+        ]]></hook>
+
+        <hook id="ed_pre_permission_check"><![CDATA[
+            if($cur_post['hidden'] != "0")
+                message($lang_common['No permission']);
+        ]]></hook>
+
+        <hook id="mi_new_action"><![CDATA[
+            // Hide post?
+            if (isset($_GET['offtopic']))
+            {
+                App::load_language($ext_info['id']);
+
+                if (!$forum_user['is_admmod'])
+                    message($lang_common['No permission']);
+
+                $post_id = intval($_GET['pid']);
+                if ($post_id < 1)
+                    message($lang_common['Bad request']);
+
+                $hide = intval($_GET['hide']);
+                $user = forum_htmlencode($_GET['uid']);
+
+                // We validate the CSRF token. If it's set in POST and we're at this point, the token is valid.
+                // If it's in GET, we need to make sure it's valid.
+                if (!isset($_POST['csrf_token']) && (!isset($_GET['csrf_token']) || $_GET['csrf_token'] !== generate_form_token('post_hide'.$post_id.$hide)))
+                    csrf_confirm_form();
+
+                if ($hide == 2)
+                {
+                    $hide = 1;
+                    $time_hide = time();
+                }
+                else
+                    $time_hide = time() + $forum_config['o_hide_post']*60*60;
+
+                if ($hide == 1)
+                {
+                    $query = array(
+                            'UPDATE'	=> 'posts',
+                            'SET'		=> 'hidden=\''.$time_hide.'\', hidden_user=\''.$user.'\'',
+                            'WHERE'		=> 'id='.$post_id
+                    );
+
+                    $forum_db->query_build($query) or error(__FILE__, __LINE__);
+
+                    $forum_flash->add_info(App::$lang['OffTopic Hide redirect']);
+
+                    redirect(forum_link($forum_url['post'], $post_id), App::$lang['OffTopic Hide redirect']);
+                }
+                else
+                {
+                    $query = array(
+                            'UPDATE'	=> 'posts',
+                            'SET'		=> 'hidden=\'0\'',
+                            'WHERE'		=> 'id='.$post_id
+                    );
+
+                    $forum_db->query_build($query) or error(__FILE__, __LINE__);
+
+                    $forum_flash->add_info(App::$lang['OffTopic Show redirect']);
+
+                    redirect(forum_link($forum_url['post'], $post_id), App::$lang['OffTopic Show redirect']);
+                }
+            }
+        ]]></hook>
+
+        <hook id="aop_features_pre_message_fieldset_end"><![CDATA[
+            App::load_language($ext_info['id']);
+            View::$instance = View::factory(FORUM_ROOT.'extensions/nya_hide_post/view/features', array('forum_page' => $forum_page));
+            echo  View::$instance->render();
+        ]]></hook>
+
+        <hook id="aop_features_validation"><![CDATA[
+            $form['hide_post'] = intval($form['hide_post']);
+        ]]></hook>
+
+        <hook id="co_modify_url_scheme"><![CDATA[
+            if (file_exists($ext_info['path'].'/url/'.$forum_config['o_sef'].'.php'))
+                require $ext_info['path'].'/url/'.$forum_config['o_sef'].'.php';
+            else
+                require $ext_info['path'].'/url/Default.php';
+        ]]></hook>
+	</hooks>
+</extension>

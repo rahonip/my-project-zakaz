@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE extension SYSTEM "ext-1.0.dtd">
+
+<!--
+/**
+ * Add advert to forum
+ *
+ *	hcs_ads_manager
+ * @copyright (C) 2010 hcs hcs@mail.ru
+ * @license http://www.gnu.org/licenses/gpl.html GPL version 2 or higher
+ *
+ *	Extension for PunBB (C) 2008-2009 PunBB
+ * @license http://www.gnu.org/licenses/gpl.html GPL version 2 or higher
+ */
+-->
+
+<extension engine="1.0">
+	<id>hcs_ads_manager</id>
+	<title>Рекламные блоки</title>
+	<version>1.1.1</version>
+	<description>Позволяет добавлять рекламные блоки типа Google adsense или Yandex-direct на форум. Настройка вывода блоков рекламы в админке. Блоков может быть неограниченное количество. </description>
+	<author>hcs</author>
+	<minversion>1.4</minversion>
+	<maxtestedon>1.4</maxtestedon>
+
+	<install><![CDATA[
+// Setup main table
+if (!$forum_db->table_exists('hcs_ads_code'))
+{
+	$schema = array(
+		'FIELDS'			=> array(
+			'id'				=> array(
+				'datatype'		=> 'SERIAL',
+				'allow_null'	=> false
+			),
+			'name'			=> array(
+				'datatype'		=> 'VARCHAR(255)',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+			'enabled'			=> array(
+				'datatype'		=> 'TINYINT(1)',
+				'allow_null'	=> false,
+				'default'		=> '\'0\''
+			),
+			'code'			=> array(
+				'datatype'		=> 'TEXT',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+			'page_index'			=> array(
+				'datatype'		=> 'VARCHAR(255)',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+			'page_forum'			=> array(
+				'datatype'		=> 'VARCHAR(255)',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+			'page_topic'			=> array(
+				'datatype'		=> 'VARCHAR(255)',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+			'page_search'			=> array(
+				'datatype'		=> 'VARCHAR(255)',
+				'allow_null'	=> false,
+				'default'		=> '\'\''
+			),
+
+		),
+		'PRIMARY KEY'	=> array('id'),
+		'INDEXES'		=> array(
+			'name_idx'		=> array('name' )
+		)
+	);
+
+	$forum_db->create_table('hcs_ads_code', $schema);
+
+}
+
+if (!$forum_db->field_exists('file_name')){
+	$forum_db->add_field('hcs_ads_code', 'file_name', 'varchar(255)', false, '');
+}
+	]]></install>
+
+	<uninstall><![CDATA[
+$forum_db->drop_table('hcs_ads_code');
+	]]></uninstall>
+
+	<hooks>
+
+		<hook id="ca_new_function"><![CDATA[
+if (file_exists($ext_info['path'].'/lang/'.$forum_user['language'].'.php'))
+	require $ext_info['path'].'/lang/'.$forum_user['language'].'.php';
+else
+	require $ext_info['path'].'/lang/English.php';
+		]]></hook>
+
+		<hook id="co_modify_url_scheme"><![CDATA[
+if (file_exists($ext_info['path'].'/url/'.$forum_config['o_sef'].'.php'))
+	require $ext_info['path'].'/url/'.$forum_config['o_sef'].'.php';
+else
+	require $ext_info['path'].'/url/Default.php';
+		]]></hook>
+
+		<hook id="ca_fn_generate_admin_menu_new_sublink"><![CDATA[
+if (FORUM_PAGE_SECTION == 'management') {
+	$forum_page['admin_submenu']['ads_manage'] = '<li class="'.((FORUM_PAGE == 'admin-ads-manage') ? 'active' : 'normal').((empty($forum_page['admin_submenu'])) ? ' first-item' : '').'"><a href="'.forum_link($forum_url['hcs_ads_manager']).'">'.$GLOBALS['lang_hcs_ads']['Ads manager'].'</a></li>';
+}
+		]]></hook>
+
+		<hook id="aop_new_section"><![CDATA[
+if ($section == 'hcs_ads') {
+	define ('EXT_PATH',$ext_info['path']);
+	define ('EXT_URL',$ext_info['url']);
+	require $ext_info['path'].'/ads_manager.php';
+}
+		]]></hook>
+
+		<hook id="co_common"><![CDATA[
+require_once $ext_info['path'].'/functions.php';
+		]]></hook>
+
+		<hook id="in_main_output_start"><![CDATA[
+get_ads_block('index', 0);
+$ads_item_counter = 1;
+		]]></hook>
+
+		<hook id="in_forum_pre_cat_head"><![CDATA[
+++$ads_item_counter;
+get_ads_block('index', 2, $ads_item_counter);
+		]]></hook>
+
+		<hook id="in_end"><![CDATA[
+get_ads_block('index', 1);
+get_ads_block('index', 2, $ads_item_counter, $ads_item_counter);
+		]]></hook>
+
+		<hook id="hd_main_elements"><![CDATA[
+$main_elements['<!-- forum_main_pagepost_top -->'] = '<!-- hcs_ads_top_placeholder -->'.$main_elements['<!-- forum_main_pagepost_top -->'];
+$main_elements['<!-- forum_main_pagepost_end -->'] .= '<!-- hcs_ads_bottom_placeholder -->';
+		]]></hook>
+
+		<hook id="ft_end"><![CDATA[
+if (!empty($hcs_ads_placeholder[0])) {
+	$tpl_main = str_replace('<!-- hcs_ads_top_placeholder -->', implode(' ',$hcs_ads_placeholder[0]), $tpl_main);
+}
+if (!empty($hcs_ads_placeholder[1])) {
+	$tpl_main = str_replace('<!-- hcs_ads_bottom_placeholder -->', implode(' ',$hcs_ads_placeholder[1]), $tpl_main);
+} 
+		]]></hook>
+
+		<hook id="vf_main_output_start"><![CDATA[
+get_ads_block('forum', 0); 
+		]]></hook>
+
+		<hook id="vf_pre_topic_loop_start"><![CDATA[
+$topics_count = $forum_db->num_rows($result);
+		]]></hook>
+
+		<hook id="vf_row_pre_display"><![CDATA[
+get_ads_block('forum', 2, $forum_page['item_count'], $topics_count);
+		]]></hook>
+
+		<hook id="vf_end"><![CDATA[
+get_ads_block('forum', 1);
+if (!isset($forum_page['item_count']))
+	$forum_page['item_count'] = 1;
+get_ads_block('forum', 2, $forum_page['item_count'], $forum_page['item_count'], true);
+		]]></hook>
+
+		<hook id="vt_main_output_start"><![CDATA[
+get_ads_block('topic', 0);
+$ads_post_count = $forum_page['finish_at'] - $forum_page['start_from'];
+		]]></hook>
+
+		<hook id="vt_row_pre_display"><![CDATA[
+get_ads_block('topic', 2, $forum_page['item_count'], $ads_post_count);	
+		]]></hook>
+
+		<hook id="vt_end"><![CDATA[
+get_ads_block('topic', 1);
+		]]></hook>
+
+		<hook id="se_results_output_start"><![CDATA[
+get_ads_block('search', 0);
+		]]></hook>
+
+		<hook id="se_results_end"><![CDATA[
+get_ads_block('search', 1);
+		]]></hook>
+
+
+		<hook id="se_results_posts_row_pre_display, se_results_topics_row_pre_display"><![CDATA[
+get_ads_block('search', 2, $forum_page['item_count'], $num_hits);
+		]]></hook>
+
+	</hooks>
+</extension>

@@ -1,0 +1,86 @@
+#tooltip_content {
+	background-color: #FFF;
+}
+table.habr_popup td {
+	border-width: 0; 
+	padding: 0 0;
+}
+table.habr_popup {
+	width: auto;
+	max-width:400px;
+	position: absolute;
+	display: none;
+	z-index: 50;
+	border-collapse: collapse;
+	font-size:0.8em;
+}
+.habr_popup td.corner {
+	height: 15px;
+	width: 19px;
+}
+.habr_popup td#topleft {
+	background-image: url(/extensions/nya_habr/js/img/bubble-1.png);
+	background-repeat:none;
+}
+.habr_popup td.top {
+	background-image: url(/extensions/nya_habr/js/img/bubble-2.png);
+}
+.habr_popup td#topright {
+	background-image: url(/extensions/nya_habr/js/img/bubble-3.png);
+}
+.habr_popup td.left {
+	background-image: url(/extensions/nya_habr/js/img/bubble-4.png);
+}
+.habr_popup td.right {
+	background-image: url(/extensions/nya_habr/js/img/bubble-5.png);
+}
+.habr_popup td#bottomleft {
+	background-image: url(/extensions/nya_habr/js/img/bubble-6.png);
+}
+.habr_popup td.bottom {
+	background-image: url(/extensions/nya_habr/js/img/bubble-7.png);
+	text-align: center;
+}.habr_popup td.bottom span {
+	display: block;
+	margin: 0 auto;
+	width: 30px;
+	height: 29px;
+	background-image: url(/extensions/nya_habr/js/img/bubble-tail2.png);
+}
+
+.habr_popup td#bottomright {
+	background-image: url(/extensions/nya_habr/js/img/bubble-8.png); 
+}
+
+.habr {
+    font-weight: bold;
+    font-size: 10px;
+    padding: 1px 6px;
+    display: inline-block;
+    -moz-border-radius: 3px;
+    -webkit-border-radius: 3px;
+    border-radius: 3px;
+}
+
+.habr.positive{
+    background: #6f8f52;
+}
+
+.habr.negative{
+    background: #b82929;
+}
+
+.habr.positive, .habr.negative {
+    color: #fff;
+}
+
+.habr.zero {
+    background: #dedede;
+    color: #6e6e6e;
+}
+.habr_message {
+    opacity: 0.3;
+}
+.habr_message_white {
+    opacity: 0;
+}
